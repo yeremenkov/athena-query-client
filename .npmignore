@@ -1,0 +1,11 @@
+.git
+.npmrc
+node_modules/
+src/
+
+.eslintrc.js
+.gitignore
+.prettierrc
+tsconfig.json
+tsconfig.build.json
+yarn.lock
