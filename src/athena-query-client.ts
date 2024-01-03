@@ -30,15 +30,6 @@ export class AthenaQueryClient {
   }
 
   /**
-   * helper to escape user input to be savely used in queries
-   * @param {String} raw input to be used in SQL query string
-   * @return {String} the escaped user input
-   */
-  sqlSaveEscapeString(raw: string): string {
-    return raw.replace(/[\\%_]/g, '\\$&');
-  }
-
-  /**
    * Get data from Athena and rerutn it as proper formatted Array of objects
    * @param {String} sqlQuery The SQL query string
    * @return {Array} Array of Objects
