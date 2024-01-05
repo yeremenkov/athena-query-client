@@ -14,19 +14,14 @@ interface AthenaQueryClientConfig {
 }
 
 export class AthenaQueryClient {
-  public options: any;
+  public database: string;
   private client: AthenaClient;
-  private database: string;
   private catalog: string;
 
   constructor(config: AthenaQueryClientConfig) {
     this.client = new AthenaClient(config.ClientConfig);
     this.database = config.Database;
     this.catalog = config.Catalog;
-    this.options = {
-      type: 'mysql',
-      database: config.Database,
-    };
   }
 
   /**
