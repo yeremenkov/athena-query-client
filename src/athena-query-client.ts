@@ -7,21 +7,45 @@ import {
   GetQueryResultsCommand,
 } from '@aws-sdk/client-athena';
 
+interface ResultReuseConfiguration {
+  ResultReuseByAgeConfiguration: {
+    Enabled: boolean,
+    MaxAgeInMinutes?: number,
+  }
+}
+
 interface AthenaQueryClientConfig {
   ClientConfig: AthenaClientConfig;
   Database: string;
   Catalog: string;
+  WorkGroup?: string;
+  ResultReuseConfiguration?: ResultReuseConfiguration;
 }
 
 export class AthenaQueryClient {
   public database: string;
   private client: AthenaClient;
   private catalog: string;
+  private workGroup: string = 'primary';
+  private resultReuseConfiguration: ResultReuseConfiguration = {
+    ResultReuseByAgeConfiguration: {
+      Enabled: true,
+      MaxAgeInMinutes: 60,
+    },
+  }
 
   constructor(config: AthenaQueryClientConfig) {
     this.client = new AthenaClient(config.ClientConfig);
     this.database = config.Database;
     this.catalog = config.Catalog;
+    
+    if (config.WorkGroup) {
+      this.workGroup = config.WorkGroup
+    }
+
+    if (config.ResultReuseConfiguration) {
+      this.resultReuseConfiguration = config.ResultReuseConfiguration;
+    }
   }
 
   /**
@@ -36,13 +60,8 @@ export class AthenaQueryClient {
         Database: this.database,
         Catalog: this.catalog,
       },
-      WorkGroup: 'primary',
-      ResultReuseConfiguration: {
-        ResultReuseByAgeConfiguration: {
-          Enabled: true,
-          MaxAgeInMinutes: 60,
-        },
-      },
+      WorkGroup: this.workGroup,
+      ResultReuseConfiguration: this.resultReuseConfiguration
     };
 
     const { QueryExecutionId } = await this.client.send(
