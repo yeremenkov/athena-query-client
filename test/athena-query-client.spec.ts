@@ -148,6 +148,39 @@ describe('AthenaQueryClient', () => {
     );
   });
 
+  it('defaults Catalog to AwsDataCatalog', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: { ResultSetMetadata: columns('id'), Rows: [row('id')] },
+    });
+
+    await createClient({ Catalog: undefined }).query('SELECT 1');
+
+    const [start] = athenaMock.commandCalls(StartQueryExecutionCommand);
+    expect(start.args[0].input.QueryExecutionContext).toEqual({
+      Database: 'db',
+      Catalog: 'AwsDataCatalog',
+    });
+  });
+
+  it('uses an injected AthenaClient instead of creating one', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: { ResultSetMetadata: columns('id'), Rows: [row('id')] },
+    });
+    const client = new AthenaClient({ region: 'us-east-1' });
+
+    await new AthenaQueryClient({ Client: client, Database: 'db' }).query(
+      'SELECT 1',
+    );
+
+    expect(athenaMock.call(0).thisValue).toBe(client);
+  });
+
   it('fetches all result pages', async () => {
     athenaMock
       .on(GetQueryExecutionCommand)

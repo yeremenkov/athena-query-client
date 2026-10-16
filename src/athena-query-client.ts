@@ -21,9 +21,10 @@ export interface ResultReuseConfiguration {
 }
 
 export interface AthenaQueryClientConfig {
-  ClientConfig: AthenaClientConfig;
+  ClientConfig?: AthenaClientConfig;
+  Client?: AthenaClient;
   Database: string;
-  Catalog: string;
+  Catalog?: string;
   WorkGroup?: string;
   ResultReuseConfiguration?: ResultReuseConfiguration;
   PollIntervalMs?: number;
@@ -46,7 +47,7 @@ export interface QueryResultWithStats<T = Record<string, any>> {
 export class AthenaQueryClient {
   public database: string;
   private client: AthenaClient;
-  private catalog: string;
+  private catalog: string = 'AwsDataCatalog';
   private workGroup: string = 'primary';
   private resultReuseConfiguration: ResultReuseConfiguration = {
     ResultReuseByAgeConfiguration: {
@@ -58,9 +59,12 @@ export class AthenaQueryClient {
   private maxWaitMs?: number;
 
   constructor(config: AthenaQueryClientConfig) {
-    this.client = new AthenaClient(config.ClientConfig);
+    this.client = config.Client ?? new AthenaClient(config.ClientConfig ?? {});
     this.database = config.Database;
-    this.catalog = config.Catalog;
+
+    if (config.Catalog) {
+      this.catalog = config.Catalog;
+    }
 
     if (config.WorkGroup) {
       this.workGroup = config.WorkGroup;

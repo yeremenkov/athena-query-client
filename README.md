@@ -6,9 +6,10 @@ The Athena Query Client is a simple package that provides a method to retrieve d
 
 ## AthenaQueryClient constructor params
 
-- **ClientConfig:** Configuration settings for the AWS Athena client
+- **ClientConfig:** Configuration settings for the AWS Athena client. Optional; without it the SDK picks up region and credentials from the environment.
   - **region:** AWS geographical region, for example 'eu-west-1'
-- **Catalog:** AWS Athena data source catalog name
+- **Client:** An existing `AthenaClient` instance to use instead of creating one from `ClientConfig`. Optional; useful to share a client or to mock it in tests.
+- **Catalog:** AWS Athena data source catalog name. Optional, defaults to 'AwsDataCatalog'.
 - **Database:** AWS Athena database name. The database must exist in the catalog.
 - **WorkGroup:** The name of the workgroup in which the query is being started. Optional, defaults to 'primary'.
 - **ResultReuseConfiguration:** Specifies the query result reuse behavior for the query, how the query results are cached or reused. Optional, predefined by default.
