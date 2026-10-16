@@ -29,6 +29,7 @@ export interface AthenaQueryClientConfig {
   ResultReuseConfiguration?: ResultReuseConfiguration;
   PollIntervalMs?: number;
   MaxWaitMs?: number;
+  NullAsNull?: boolean;
 }
 
 export interface QueryStatistics {
@@ -57,6 +58,7 @@ export class AthenaQueryClient {
   };
   private pollIntervalMs: number = 1000;
   private maxWaitMs?: number;
+  private nullAsNull: boolean = false;
 
   constructor(config: AthenaQueryClientConfig) {
     this.client = config.Client ?? new AthenaClient(config.ClientConfig ?? {});
@@ -80,6 +82,10 @@ export class AthenaQueryClient {
 
     if (config.MaxWaitMs !== undefined) {
       this.maxWaitMs = config.MaxWaitMs;
+    }
+
+    if (config.NullAsNull !== undefined) {
+      this.nullAsNull = config.NullAsNull;
     }
   }
 
@@ -234,9 +240,14 @@ export class AthenaQueryClient {
     );
 
     return rows.map((row) => {
-      const mappedObject: Record<string, string> = {};
+      const mappedObject: Record<string, string | null> = {};
       (row.Data ?? []).forEach((value, i) => {
-        mappedObject[columns[i]] = value.VarCharValue || '';
+        // Athena omits VarCharValue for NULL values
+        if (value.VarCharValue === undefined) {
+          mappedObject[columns[i]] = this.nullAsNull ? null : '';
+        } else {
+          mappedObject[columns[i]] = value.VarCharValue;
+        }
       });
       return mappedObject;
     });

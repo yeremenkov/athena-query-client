@@ -17,9 +17,10 @@ The Athena Query Client is a simple package that provides a method to retrieve d
     - **Enabled:** A boolean value that toggles this feature on or off. True if previous query results can be reused when the query is run; otherwise, false. The default is true.
     - **MaxAgeInMinutes:** Specifies, in minutes, the maximum age of a previous query result that Athena should consider for reuse. The default is 60.
 - **PollIntervalMs:** How often, in milliseconds, the query execution state is checked. Optional, defaults to 1000.
+- **NullAsNull:** When true, NULL values are returned as `null` instead of empty strings. Optional, defaults to false.
 - **MaxWaitMs:** Maximum time, in milliseconds, to wait for the query to finish. When exceeded, the query is stopped and an error is thrown. Optional, no limit by default.
 
-Results are paginated automatically, so all rows are returned regardless of size. NULL values are returned as empty strings.
+Results are paginated automatically, so all rows are returned regardless of size. NULL values are returned as empty strings unless `NullAsNull` is enabled.
 
 ## Usage
 

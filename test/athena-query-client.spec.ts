@@ -181,6 +181,25 @@ describe('AthenaQueryClient', () => {
     expect(athenaMock.call(0).thisValue).toBe(client);
   });
 
+  it('returns null for NULL values when NullAsNull is enabled', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: {
+        ResultSetMetadata: columns('id', 'name'),
+        Rows: [row('id', 'name'), row('1', undefined), row('2', '')],
+      },
+    });
+
+    await expect(
+      createClient({ NullAsNull: true }).query('SELECT 1'),
+    ).resolves.toEqual([
+      { id: '1', name: null },
+      { id: '2', name: '' },
+    ]);
+  });
+
   it('fetches all result pages', async () => {
     athenaMock
       .on(GetQueryExecutionCommand)
