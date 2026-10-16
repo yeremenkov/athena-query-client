@@ -4,6 +4,14 @@
 
 The Athena Query Client is a simple package that provides a method to retrieve data from Amazon Athena by merely passing an SQL query as the single parameter of the method.
 
+## Installation
+
+`@aws-sdk/client-athena` is a peer dependency, so your app shares a single copy of the AWS SDK:
+
+```sh
+npm install athena-query-client @aws-sdk/client-athena
+```
+
 ## AthenaQueryClient constructor params
 
 - **ClientConfig:** Configuration settings for the AWS Athena client. Optional; without it the SDK picks up region and credentials from the environment.

@@ -26,10 +26,11 @@
     "lint:check": "eslint \"{src,test}/**/*.ts\"",
     "prepublishOnly": "npm run build"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@aws-sdk/client-athena": "^3.429.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-athena": "^3.1152.0",
     "@types/jest": "^29",
     "@types/node": "^20.3.1",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
