@@ -38,8 +38,8 @@ export interface QueryStatistics {
   reusedPreviousResult?: boolean;
 }
 
-export interface QueryResultWithStats {
-  rows: any[];
+export interface QueryResultWithStats<T = Record<string, any>> {
+  rows: T[];
   stats: QueryStatistics;
 }
 
@@ -82,10 +82,10 @@ export class AthenaQueryClient {
   /**
    * Get data from Athena and return it as properly formatted Array of objects
    * @param {String} sqlQuery The SQL query string
-   * @return {Array} Array of Objects
+   * @return {Array} Array of Objects, typed as T
    */
-  async query(sqlQuery: string): Promise<any> {
-    const { rows } = await this.queryWithStats(sqlQuery);
+  async query<T = Record<string, any>>(sqlQuery: string): Promise<T[]> {
+    const { rows } = await this.queryWithStats<T>(sqlQuery);
     return rows;
   }
 
@@ -95,7 +95,9 @@ export class AthenaQueryClient {
    * @param {String} sqlQuery The SQL query string
    * @return {Object} Rows and statistics of the query execution
    */
-  async queryWithStats(sqlQuery: string): Promise<QueryResultWithStats> {
+  async queryWithStats<T = Record<string, any>>(
+    sqlQuery: string,
+  ): Promise<QueryResultWithStats<T>> {
     const queryExecutionInput = {
       QueryString: sqlQuery,
       QueryExecutionContext: {
@@ -114,7 +116,7 @@ export class AthenaQueryClient {
       throw new Error('Athena did not return a QueryExecutionId');
     }
 
-    return this.waitForQueryAndGetData(QueryExecutionId);
+    return this.waitForQueryAndGetData<T>(QueryExecutionId);
   }
 
   /**
@@ -124,9 +126,9 @@ export class AthenaQueryClient {
    * @param {String} QueryExecutionId Id of a query which we sent to Athena
    * @return {Object} Rows and statistics of the query execution
    */
-  private async waitForQueryAndGetData(
+  private async waitForQueryAndGetData<T>(
     QueryExecutionId: string,
-  ): Promise<QueryResultWithStats> {
+  ): Promise<QueryResultWithStats<T>> {
     const startedAt = Date.now();
 
     while (true) {
@@ -143,7 +145,8 @@ export class AthenaQueryClient {
           statementType,
         );
         return {
-          rows,
+          // Values are mapped at runtime; T is the caller's description of the row shape
+          rows: rows as unknown as T[],
           stats: {
             queryExecutionId: QueryExecutionId,
             dataScannedInBytes: Statistics?.DataScannedInBytes,

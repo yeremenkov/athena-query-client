@@ -47,6 +47,19 @@ const athenaQueryClient = new AthenaQueryClient({
 const data = await athenaQueryClient.query('SELECT * FROM cars_brands LIMIT 20');
 ```
 
+### Typed rows
+
+`query` and `queryWithStats` accept a generic describing the row shape (defaults to `Record<string, any>`):
+
+```ts
+interface CarBrand {
+  id: string;
+  name: string;
+}
+
+const brands = await athenaQueryClient.query<CarBrand>('SELECT id, name FROM cars_brands');
+```
+
 ### Query statistics
 
 `queryWithStats` returns the same rows together with the execution statistics:

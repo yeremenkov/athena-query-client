@@ -105,6 +105,22 @@ describe('AthenaQueryClient', () => {
     });
   });
 
+  it('returns rows typed with the given generic', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: {
+        ResultSetMetadata: columns('id'),
+        Rows: [row('id'), row('1')],
+      },
+    });
+
+    const rows = await createClient().query<{ id: string }>('SELECT id');
+    const ids: string[] = rows.map((r) => r.id);
+    expect(ids).toEqual(['1']);
+  });
+
   it('fetches all result pages', async () => {
     athenaMock
       .on(GetQueryExecutionCommand)
