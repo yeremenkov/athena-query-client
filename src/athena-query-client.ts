@@ -5,6 +5,7 @@ import {
   StartQueryExecutionCommand,
   GetQueryExecutionCommand,
   StopQueryExecutionCommand,
+  QueryExecution,
   QueryExecutionState,
   GetQueryResultsCommand,
   ResultSetMetadata,
@@ -109,6 +110,10 @@ export class AthenaQueryClient {
       new StartQueryExecutionCommand(queryExecutionInput),
     );
 
+    if (!QueryExecutionId) {
+      throw new Error('Athena did not return a QueryExecutionId');
+    }
+
     return this.waitForQueryAndGetData(QueryExecutionId);
   }
 
@@ -128,12 +133,9 @@ export class AthenaQueryClient {
       const response = await this.client.send(
         new GetQueryExecutionCommand({ QueryExecutionId }),
       );
-      const {
-        Status,
-        StatementType: statementType,
-        Statistics,
-      } = response.QueryExecution;
-      const state = Status.State;
+      const execution: QueryExecution = response.QueryExecution ?? {};
+      const { Status, StatementType: statementType, Statistics } = execution;
+      const state = Status?.State;
 
       if (state === QueryExecutionState.SUCCEEDED) {
         const rows = await this.getQueryResults(
@@ -153,7 +155,7 @@ export class AthenaQueryClient {
           },
         };
       } else if (state === QueryExecutionState.FAILED) {
-        throw new Error(`Query failed: ${Status.StateChangeReason}`);
+        throw new Error(`Query failed: ${Status?.StateChangeReason}`);
       } else if (state === QueryExecutionState.CANCELLED) {
         throw new Error('Query was cancelled');
       } else if (
@@ -188,8 +190,8 @@ export class AthenaQueryClient {
     statementType?: string,
   ) {
     const rows: Row[] = [];
-    let metadata: ResultSetMetadata;
-    let nextToken: string;
+    let metadata: ResultSetMetadata | undefined;
+    let nextToken: string | undefined;
 
     do {
       const response = await this.client.send(
@@ -212,11 +214,13 @@ export class AthenaQueryClient {
    * @param {Array} rows Data rows returned from Athena (without header row)
    * @return {Array} Array of Objects
    */
-  private mapData(metadata: ResultSetMetadata, rows: Row[]) {
-    const columns = (metadata?.ColumnInfo ?? []).map((column) => column.Name);
+  private mapData(metadata: ResultSetMetadata | undefined, rows: Row[]) {
+    const columns = (metadata?.ColumnInfo ?? []).map(
+      (column, i) => column.Name ?? `_col${i}`,
+    );
 
     return rows.map((row) => {
-      const mappedObject = {};
+      const mappedObject: Record<string, string> = {};
       (row.Data ?? []).forEach((value, i) => {
         mappedObject[columns[i]] = value.VarCharValue || '';
       });
