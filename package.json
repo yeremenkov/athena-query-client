@@ -2,12 +2,27 @@
   "name": "athena-query-client",
   "version": "1.1.0",
   "description": "The Athena Query Client is a simple package that provides a method to retrieve data from Amazon Athena by merely passing an SQL query as the single parameter of the method.",
-  "main": "./dist/athena-query-client.js",
-  "types": "./dist/athena-query-client.d.ts",
+  "main": "./dist/cjs/athena-query-client.js",
+  "module": "./dist/esm/athena-query-client.js",
+  "types": "./dist/cjs/athena-query-client.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/athena-query-client.d.ts",
+        "default": "./dist/esm/athena-query-client.js"
+      },
+      "require": {
+        "types": "./dist/cjs/athena-query-client.d.ts",
+        "default": "./dist/cjs/athena-query-client.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist/**/*.js",
     "dist/**/*.d.ts",
-    "dist/**/*.js.map"
+    "dist/**/*.js.map",
+    "dist/*/package.json"
   ],
   "repository": {
     "type": "git",
@@ -19,12 +34,13 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "npx tsc -p tsconfig.build.json",
+    "build": "npm run clean && tsc -p tsconfig.build.json && tsc -p tsconfig.esm.json && node scripts/postbuild.js",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest",
     "lint:check": "eslint \"{src,test}/**/*.ts\"",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\""
   },
   "peerDependencies": {
     "@aws-sdk/client-athena": "^3.429.0"
