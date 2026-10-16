@@ -46,6 +46,18 @@ const athenaQueryClient = new AthenaQueryClient({
 const data = await athenaQueryClient.query('SELECT * FROM cars_brands LIMIT 20');
 ```
 
+### Query statistics
+
+`queryWithStats` returns the same rows together with the execution statistics:
+
+```js
+const { rows, stats } = await athenaQueryClient.queryWithStats(
+  'SELECT * FROM cars_brands LIMIT 20',
+);
+// stats: { queryExecutionId, dataScannedInBytes, engineExecutionTimeInMillis,
+//          totalExecutionTimeInMillis, reusedPreviousResult }
+```
+
 ## Releasing
 
 Releases are published to npm automatically by GitHub Actions when a `vX.Y.Z` tag is pushed:

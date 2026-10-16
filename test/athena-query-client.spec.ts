@@ -73,6 +73,38 @@ describe('AthenaQueryClient', () => {
     });
   });
 
+  it('returns rows with execution statistics from queryWithStats', async () => {
+    athenaMock.on(GetQueryExecutionCommand).resolves({
+      QueryExecution: {
+        StatementType: StatementType.DML,
+        Status: { State: QueryExecutionState.SUCCEEDED },
+        Statistics: {
+          DataScannedInBytes: 1024,
+          EngineExecutionTimeInMillis: 120,
+          TotalExecutionTimeInMillis: 150,
+          ResultReuseInformation: { ReusedPreviousResult: false },
+        },
+      },
+    });
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: {
+        ResultSetMetadata: columns('id'),
+        Rows: [row('id'), row('1')],
+      },
+    });
+
+    await expect(createClient().queryWithStats('SELECT id')).resolves.toEqual({
+      rows: [{ id: '1' }],
+      stats: {
+        queryExecutionId: 'qid',
+        dataScannedInBytes: 1024,
+        engineExecutionTimeInMillis: 120,
+        totalExecutionTimeInMillis: 150,
+        reusedPreviousResult: false,
+      },
+    });
+  });
+
   it('fetches all result pages', async () => {
     athenaMock
       .on(GetQueryExecutionCommand)

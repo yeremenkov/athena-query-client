@@ -29,6 +29,19 @@ export interface AthenaQueryClientConfig {
   MaxWaitMs?: number;
 }
 
+export interface QueryStatistics {
+  queryExecutionId: string;
+  dataScannedInBytes?: number;
+  engineExecutionTimeInMillis?: number;
+  totalExecutionTimeInMillis?: number;
+  reusedPreviousResult?: boolean;
+}
+
+export interface QueryResultWithStats {
+  rows: any[];
+  stats: QueryStatistics;
+}
+
 export class AthenaQueryClient {
   public database: string;
   private client: AthenaClient;
@@ -71,6 +84,17 @@ export class AthenaQueryClient {
    * @return {Array} Array of Objects
    */
   async query(sqlQuery: string): Promise<any> {
+    const { rows } = await this.queryWithStats(sqlQuery);
+    return rows;
+  }
+
+  /**
+   * Same as query, but also returns the execution statistics
+   * (data scanned, execution time, result reuse)
+   * @param {String} sqlQuery The SQL query string
+   * @return {Object} Rows and statistics of the query execution
+   */
+  async queryWithStats(sqlQuery: string): Promise<QueryResultWithStats> {
     const queryExecutionInput = {
       QueryString: sqlQuery,
       QueryExecutionContext: {
@@ -85,8 +109,7 @@ export class AthenaQueryClient {
       new StartQueryExecutionCommand(queryExecutionInput),
     );
 
-    const response = await this.waitForQueryAndGetData(QueryExecutionId);
-    return response;
+    return this.waitForQueryAndGetData(QueryExecutionId);
   }
 
   /**
@@ -94,20 +117,41 @@ export class AthenaQueryClient {
    * then get the data once the state is "SUCCEEDED".
    * If maxWaitMs is set and exceeded, the query is stopped and an error is thrown.
    * @param {String} QueryExecutionId Id of a query which we sent to Athena
-   * @return {Array} Array of Objects
+   * @return {Object} Rows and statistics of the query execution
    */
-  private async waitForQueryAndGetData(QueryExecutionId: string) {
+  private async waitForQueryAndGetData(
+    QueryExecutionId: string,
+  ): Promise<QueryResultWithStats> {
     const startedAt = Date.now();
 
     while (true) {
       const response = await this.client.send(
         new GetQueryExecutionCommand({ QueryExecutionId }),
       );
-      const { Status, StatementType: statementType } = response.QueryExecution;
+      const {
+        Status,
+        StatementType: statementType,
+        Statistics,
+      } = response.QueryExecution;
       const state = Status.State;
 
       if (state === QueryExecutionState.SUCCEEDED) {
-        return await this.getQueryResults(QueryExecutionId, statementType);
+        const rows = await this.getQueryResults(
+          QueryExecutionId,
+          statementType,
+        );
+        return {
+          rows,
+          stats: {
+            queryExecutionId: QueryExecutionId,
+            dataScannedInBytes: Statistics?.DataScannedInBytes,
+            engineExecutionTimeInMillis:
+              Statistics?.EngineExecutionTimeInMillis,
+            totalExecutionTimeInMillis: Statistics?.TotalExecutionTimeInMillis,
+            reusedPreviousResult:
+              Statistics?.ResultReuseInformation?.ReusedPreviousResult,
+          },
+        };
       } else if (state === QueryExecutionState.FAILED) {
         throw new Error(`Query failed: ${Status.StateChangeReason}`);
       } else if (state === QueryExecutionState.CANCELLED) {
