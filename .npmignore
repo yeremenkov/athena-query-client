@@ -8,4 +8,4 @@ src/
 .prettierrc
 tsconfig.json
 tsconfig.build.json
-yarn.lock
+yarn.lockjest.config.js
