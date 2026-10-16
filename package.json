@@ -13,7 +13,6 @@
   "engines": {
     "node": ">=18"
   },
-  "private": null,
   "scripts": {
     "build": "npx tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\"",
