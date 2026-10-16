@@ -12,14 +12,14 @@ import {
   StatementType,
 } from '@aws-sdk/client-athena';
 
-interface ResultReuseConfiguration {
+export interface ResultReuseConfiguration {
   ResultReuseByAgeConfiguration: {
     Enabled: boolean;
     MaxAgeInMinutes?: number;
   };
 }
 
-interface AthenaQueryClientConfig {
+export interface AthenaQueryClientConfig {
   ClientConfig: AthenaClientConfig;
   Database: string;
   Catalog: string;
