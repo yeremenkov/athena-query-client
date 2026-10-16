@@ -4,6 +4,11 @@
   "description": "The Athena Query Client is a simple package that provides a method to retrieve data from Amazon Athena by merely passing an SQL query as the single parameter of the method.",
   "main": "./dist/athena-query-client.js",
   "types": "./dist/athena-query-client.d.ts",
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.js.map"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yeremenkov/athena-query-client.git"
