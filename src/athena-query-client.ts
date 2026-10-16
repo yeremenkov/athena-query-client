@@ -81,22 +81,28 @@ export class AthenaQueryClient {
 
   /**
    * Get data from Athena and return it as properly formatted Array of objects
-   * @param {String} sqlQuery The SQL query string
+   * @param {String} sqlQuery The SQL query string, may contain ? placeholders
+   * @param {Array} params Values for the ? placeholders, each one an SQL literal
    * @return {Array} Array of Objects, typed as T
    */
-  async query<T = Record<string, any>>(sqlQuery: string): Promise<T[]> {
-    const { rows } = await this.queryWithStats<T>(sqlQuery);
+  async query<T = Record<string, any>>(
+    sqlQuery: string,
+    params?: string[],
+  ): Promise<T[]> {
+    const { rows } = await this.queryWithStats<T>(sqlQuery, params);
     return rows;
   }
 
   /**
    * Same as query, but also returns the execution statistics
    * (data scanned, execution time, result reuse)
-   * @param {String} sqlQuery The SQL query string
+   * @param {String} sqlQuery The SQL query string, may contain ? placeholders
+   * @param {Array} params Values for the ? placeholders, each one an SQL literal
    * @return {Object} Rows and statistics of the query execution
    */
   async queryWithStats<T = Record<string, any>>(
     sqlQuery: string,
+    params?: string[],
   ): Promise<QueryResultWithStats<T>> {
     const queryExecutionInput = {
       QueryString: sqlQuery,
@@ -106,6 +112,7 @@ export class AthenaQueryClient {
       },
       WorkGroup: this.workGroup,
       ResultReuseConfiguration: this.resultReuseConfiguration,
+      ...(params?.length ? { ExecutionParameters: params } : {}),
     };
 
     const { QueryExecutionId } = await this.client.send(

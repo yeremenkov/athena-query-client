@@ -47,6 +47,19 @@ const athenaQueryClient = new AthenaQueryClient({
 const data = await athenaQueryClient.query('SELECT * FROM cars_brands LIMIT 20');
 ```
 
+### Parameterized queries
+
+Pass values for `?` placeholders as the second argument. They are sent as Athena `ExecutionParameters`,
+so user input is not concatenated into the SQL string. Each value is read as an SQL literal,
+so string values must be wrapped in single quotes:
+
+```js
+const data = await athenaQueryClient.query(
+  'SELECT * FROM cars_brands WHERE country = ? AND founded > ?',
+  ["'Germany'", '1900'],
+);
+```
+
 ### Typed rows
 
 `query` and `queryWithStats` accept a generic describing the row shape (defaults to `Record<string, any>`):

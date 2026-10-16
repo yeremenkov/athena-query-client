@@ -121,6 +121,33 @@ describe('AthenaQueryClient', () => {
     expect(ids).toEqual(['1']);
   });
 
+  it('passes params as ExecutionParameters', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: { ResultSetMetadata: columns('id'), Rows: [row('id')] },
+    });
+
+    const client = createClient();
+    await client.query('SELECT * FROM t WHERE id = ? AND name = ?', [
+      '1',
+      "'Audi'",
+    ]);
+    await client.query('SELECT 1');
+
+    const [withParams, withoutParams] = athenaMock.commandCalls(
+      StartQueryExecutionCommand,
+    );
+    expect(withParams.args[0].input.ExecutionParameters).toEqual([
+      '1',
+      "'Audi'",
+    ]);
+    expect(withoutParams.args[0].input).not.toHaveProperty(
+      'ExecutionParameters',
+    );
+  });
+
   it('fetches all result pages', async () => {
     athenaMock
       .on(GetQueryExecutionCommand)
