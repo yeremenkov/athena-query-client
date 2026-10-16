@@ -1,5 +1,7 @@
 # Athena Query Client #
 
+[![CI](https://github.com/yeremenkov/athena-query-client/actions/workflows/ci.yml/badge.svg)](https://github.com/yeremenkov/athena-query-client/actions/workflows/ci.yml)
+
 The Athena Query Client is a simple package that provides a method to retrieve data from Amazon Athena by merely passing an SQL query as the single parameter of the method.
 
 ## AthenaQueryClient constructor params
@@ -43,3 +45,14 @@ const athenaQueryClient = new AthenaQueryClient({
 
 const data = await athenaQueryClient.query('SELECT * FROM cars_brands LIMIT 20');
 ```
+
+## Releasing
+
+Releases are published to npm automatically by GitHub Actions when a `vX.Y.Z` tag is pushed:
+
+```sh
+npm version patch   # or minor / major — bumps package.json, commits and tags
+git push --follow-tags
+```
+
+The workflow checks that the tag matches the `package.json` version, runs lint/tests/build, publishes to npm (via Trusted Publishing, with provenance) and creates a GitHub Release.

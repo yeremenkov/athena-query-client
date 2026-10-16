@@ -1,11 +1,15 @@
 .git
+.github/
 .npmrc
 node_modules/
 src/
+test/
 
 .eslintrc.js
 .gitignore
 .prettierrc
+jest.config.js
 tsconfig.json
 tsconfig.build.json
-yarn.lockjest.config.js
+package-lock.json
+dist/*.tsbuildinfo
