@@ -200,6 +200,55 @@ describe('AthenaQueryClient', () => {
     ]);
   });
 
+  it('converts values by column type when CoerceTypes is enabled', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: {
+        ResultSetMetadata: {
+          ColumnInfo: [
+            { Name: 'id', Type: 'integer' },
+            { Name: 'big', Type: 'bigint' },
+            { Name: 'price', Type: 'double' },
+            { Name: 'exact', Type: 'decimal' },
+            { Name: 'active', Type: 'boolean' },
+            { Name: 'name', Type: 'varchar' },
+            { Name: 'note', Type: 'varchar' },
+          ],
+        },
+        Rows: [
+          row('id', 'big', 'price', 'exact', 'active', 'name', 'note'),
+          row('1', '9000000000', '9.5', '10.25', 'true', 'Audi', undefined),
+          row('2', '0', '0', '0.10', 'false', '42', undefined),
+        ],
+      },
+    });
+
+    await expect(
+      createClient({ CoerceTypes: true, NullAsNull: true }).query('SELECT 1'),
+    ).resolves.toEqual([
+      {
+        id: 1,
+        big: 9000000000,
+        price: 9.5,
+        exact: '10.25',
+        active: true,
+        name: 'Audi',
+        note: null,
+      },
+      {
+        id: 2,
+        big: 0,
+        price: 0,
+        exact: '0.10',
+        active: false,
+        name: '42',
+        note: null,
+      },
+    ]);
+  });
+
   it('fetches all result pages', async () => {
     athenaMock
       .on(GetQueryExecutionCommand)

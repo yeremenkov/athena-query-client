@@ -13,6 +13,17 @@ import {
   StatementType,
 } from '@aws-sdk/client-athena';
 
+const NUMERIC_TYPES = new Set([
+  'tinyint',
+  'smallint',
+  'integer',
+  'int',
+  'bigint',
+  'float',
+  'real',
+  'double',
+]);
+
 export interface ResultReuseConfiguration {
   ResultReuseByAgeConfiguration: {
     Enabled: boolean;
@@ -30,6 +41,7 @@ export interface AthenaQueryClientConfig {
   PollIntervalMs?: number;
   MaxWaitMs?: number;
   NullAsNull?: boolean;
+  CoerceTypes?: boolean;
 }
 
 export interface QueryStatistics {
@@ -59,6 +71,7 @@ export class AthenaQueryClient {
   private pollIntervalMs: number = 1000;
   private maxWaitMs?: number;
   private nullAsNull: boolean = false;
+  private coerceTypes: boolean = false;
 
   constructor(config: AthenaQueryClientConfig) {
     this.client = config.Client ?? new AthenaClient(config.ClientConfig ?? {});
@@ -86,6 +99,10 @@ export class AthenaQueryClient {
 
     if (config.NullAsNull !== undefined) {
       this.nullAsNull = config.NullAsNull;
+    }
+
+    if (config.CoerceTypes !== undefined) {
+      this.coerceTypes = config.CoerceTypes;
     }
   }
 
@@ -235,21 +252,45 @@ export class AthenaQueryClient {
    * @return {Array} Array of Objects
    */
   private mapData(metadata: ResultSetMetadata | undefined, rows: Row[]) {
-    const columns = (metadata?.ColumnInfo ?? []).map(
-      (column, i) => column.Name ?? `_col${i}`,
-    );
+    const columnInfo = metadata?.ColumnInfo ?? [];
+    const columns = columnInfo.map((column, i) => column.Name ?? `_col${i}`);
 
     return rows.map((row) => {
-      const mappedObject: Record<string, string | null> = {};
+      const mappedObject: Record<string, string | number | boolean | null> = {};
       (row.Data ?? []).forEach((value, i) => {
         // Athena omits VarCharValue for NULL values
         if (value.VarCharValue === undefined) {
           mappedObject[columns[i]] = this.nullAsNull ? null : '';
+        } else if (this.coerceTypes) {
+          mappedObject[columns[i]] = this.coerce(
+            value.VarCharValue,
+            columnInfo[i]?.Type,
+          );
         } else {
           mappedObject[columns[i]] = value.VarCharValue;
         }
       });
       return mappedObject;
     });
+  }
+
+  /**
+   * Convert a value to a JS type based on its Athena column type.
+   * Numeric types become numbers and boolean becomes true/false;
+   * everything else (including decimal, to keep precision) stays a string.
+   * @param {String} value Value returned from Athena
+   * @param {String} type Athena column type
+   * @return {String|Number|Boolean} Converted value
+   */
+  private coerce(value: string, type?: string): string | number | boolean {
+    const columnType = type?.toLowerCase();
+
+    if (columnType && NUMERIC_TYPES.has(columnType)) {
+      return Number(value);
+    } else if (columnType === 'boolean') {
+      return value === 'true';
+    }
+
+    return value;
   }
 }
