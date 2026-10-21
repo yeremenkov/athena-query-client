@@ -106,3 +106,7 @@ git push --follow-tags
 ```
 
 The workflow checks that the tag matches the `package.json` version, runs lint/tests/build, publishes to npm (via Trusted Publishing, with provenance) and creates a GitHub Release.
+
+## License
+
+MIT. Versions up to 1.1.0 were released under GPL-3.0-only.

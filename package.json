@@ -29,7 +29,7 @@
     "url": "git+https://github.com/yeremenkov/athena-query-client.git"
   },
   "author": "Vitaliy Yeremenko",
-  "license": "GPL-3.0-only",
+  "license": "MIT",
   "engines": {
     "node": ">=18"
   },
