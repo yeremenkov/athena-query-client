@@ -22,7 +22,8 @@
     "dist/**/*.js",
     "dist/**/*.d.ts",
     "dist/**/*.js.map",
-    "dist/*/package.json"
+    "dist/*/package.json",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",
