@@ -41,7 +41,8 @@
     "test": "jest",
     "lint:check": "eslint \"{src,test}/**/*.ts\"",
     "prepublishOnly": "npm run build",
-    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\""
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "version": "node scripts/changelog-release.js && git add CHANGELOG.md"
   },
   "peerDependencies": {
     "@aws-sdk/client-athena": "^3.429.0"

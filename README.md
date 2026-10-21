@@ -98,14 +98,16 @@ const { rows, stats } = await athenaQueryClient.queryWithStats(
 
 ## Releasing
 
-Releases are published to npm automatically by GitHub Actions when a `vX.Y.Z` tag is pushed:
+Releases are published to npm automatically by GitHub Actions when a `vX.Y.Z` tag is pushed.
+Changes are listed under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md) as they are made; `npm version`
+turns that section into the new version's entry:
 
 ```sh
 npm version patch   # or minor / major — bumps package.json, commits and tags
 git push --follow-tags
 ```
 
-The workflow checks that the tag matches the `package.json` version, runs lint/tests/build, publishes to npm (via Trusted Publishing, with provenance) and creates a GitHub Release.
+The workflow checks that the tag matches the `package.json` version, runs lint/tests/build, publishes to npm (via Trusted Publishing, with provenance) and creates a GitHub Release from the CHANGELOG entry.
 
 ## License
 
