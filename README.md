@@ -96,6 +96,10 @@ const { rows, stats } = await athenaQueryClient.queryWithStats(
 //          totalExecutionTimeInMillis, reusedPreviousResult }
 ```
 
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up the project, run the tests and open a pull request.
+
 ## Releasing
 
 Releases are published to npm automatically by GitHub Actions when a `vX.Y.Z` tag is pushed.
