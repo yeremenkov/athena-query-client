@@ -5,6 +5,7 @@ import {
   StartQueryExecutionCommand,
   GetQueryExecutionCommand,
   StopQueryExecutionCommand,
+  QueryExecution,
   QueryExecutionState,
   GetQueryResultsCommand,
   ResultSetMetadata,
@@ -12,27 +13,54 @@ import {
   StatementType,
 } from '@aws-sdk/client-athena';
 
-interface ResultReuseConfiguration {
+const NUMERIC_TYPES = new Set([
+  'tinyint',
+  'smallint',
+  'integer',
+  'int',
+  'bigint',
+  'float',
+  'real',
+  'double',
+]);
+
+export interface ResultReuseConfiguration {
   ResultReuseByAgeConfiguration: {
     Enabled: boolean;
     MaxAgeInMinutes?: number;
   };
 }
 
-interface AthenaQueryClientConfig {
-  ClientConfig: AthenaClientConfig;
+export interface AthenaQueryClientConfig {
+  ClientConfig?: AthenaClientConfig;
+  Client?: AthenaClient;
   Database: string;
-  Catalog: string;
+  Catalog?: string;
   WorkGroup?: string;
   ResultReuseConfiguration?: ResultReuseConfiguration;
   PollIntervalMs?: number;
   MaxWaitMs?: number;
+  NullAsNull?: boolean;
+  CoerceTypes?: boolean;
+}
+
+export interface QueryStatistics {
+  queryExecutionId: string;
+  dataScannedInBytes?: number;
+  engineExecutionTimeInMillis?: number;
+  totalExecutionTimeInMillis?: number;
+  reusedPreviousResult?: boolean;
+}
+
+export interface QueryResultWithStats<T = Record<string, any>> {
+  rows: T[];
+  stats: QueryStatistics;
 }
 
 export class AthenaQueryClient {
   public database: string;
   private client: AthenaClient;
-  private catalog: string;
+  private catalog: string = 'AwsDataCatalog';
   private workGroup: string = 'primary';
   private resultReuseConfiguration: ResultReuseConfiguration = {
     ResultReuseByAgeConfiguration: {
@@ -42,11 +70,16 @@ export class AthenaQueryClient {
   };
   private pollIntervalMs: number = 1000;
   private maxWaitMs?: number;
+  private nullAsNull: boolean = false;
+  private coerceTypes: boolean = false;
 
   constructor(config: AthenaQueryClientConfig) {
-    this.client = new AthenaClient(config.ClientConfig);
+    this.client = config.Client ?? new AthenaClient(config.ClientConfig ?? {});
     this.database = config.Database;
-    this.catalog = config.Catalog;
+
+    if (config.Catalog) {
+      this.catalog = config.Catalog;
+    }
 
     if (config.WorkGroup) {
       this.workGroup = config.WorkGroup;
@@ -63,14 +96,41 @@ export class AthenaQueryClient {
     if (config.MaxWaitMs !== undefined) {
       this.maxWaitMs = config.MaxWaitMs;
     }
+
+    if (config.NullAsNull !== undefined) {
+      this.nullAsNull = config.NullAsNull;
+    }
+
+    if (config.CoerceTypes !== undefined) {
+      this.coerceTypes = config.CoerceTypes;
+    }
   }
 
   /**
    * Get data from Athena and return it as properly formatted Array of objects
-   * @param {String} sqlQuery The SQL query string
-   * @return {Array} Array of Objects
+   * @param {String} sqlQuery The SQL query string, may contain ? placeholders
+   * @param {Array} params Values for the ? placeholders, each one an SQL literal
+   * @return {Array} Array of Objects, typed as T
    */
-  async query(sqlQuery: string): Promise<any> {
+  async query<T = Record<string, any>>(
+    sqlQuery: string,
+    params?: string[],
+  ): Promise<T[]> {
+    const { rows } = await this.queryWithStats<T>(sqlQuery, params);
+    return rows;
+  }
+
+  /**
+   * Same as query, but also returns the execution statistics
+   * (data scanned, execution time, result reuse)
+   * @param {String} sqlQuery The SQL query string, may contain ? placeholders
+   * @param {Array} params Values for the ? placeholders, each one an SQL literal
+   * @return {Object} Rows and statistics of the query execution
+   */
+  async queryWithStats<T = Record<string, any>>(
+    sqlQuery: string,
+    params?: string[],
+  ): Promise<QueryResultWithStats<T>> {
     const queryExecutionInput = {
       QueryString: sqlQuery,
       QueryExecutionContext: {
@@ -79,14 +139,18 @@ export class AthenaQueryClient {
       },
       WorkGroup: this.workGroup,
       ResultReuseConfiguration: this.resultReuseConfiguration,
+      ...(params?.length ? { ExecutionParameters: params } : {}),
     };
 
     const { QueryExecutionId } = await this.client.send(
       new StartQueryExecutionCommand(queryExecutionInput),
     );
 
-    const response = await this.waitForQueryAndGetData(QueryExecutionId);
-    return response;
+    if (!QueryExecutionId) {
+      throw new Error('Athena did not return a QueryExecutionId');
+    }
+
+    return this.waitForQueryAndGetData<T>(QueryExecutionId);
   }
 
   /**
@@ -94,22 +158,41 @@ export class AthenaQueryClient {
    * then get the data once the state is "SUCCEEDED".
    * If maxWaitMs is set and exceeded, the query is stopped and an error is thrown.
    * @param {String} QueryExecutionId Id of a query which we sent to Athena
-   * @return {Array} Array of Objects
+   * @return {Object} Rows and statistics of the query execution
    */
-  private async waitForQueryAndGetData(QueryExecutionId: string) {
+  private async waitForQueryAndGetData<T>(
+    QueryExecutionId: string,
+  ): Promise<QueryResultWithStats<T>> {
     const startedAt = Date.now();
 
     while (true) {
       const response = await this.client.send(
         new GetQueryExecutionCommand({ QueryExecutionId }),
       );
-      const { Status, StatementType: statementType } = response.QueryExecution;
-      const state = Status.State;
+      const execution: QueryExecution = response.QueryExecution ?? {};
+      const { Status, StatementType: statementType, Statistics } = execution;
+      const state = Status?.State;
 
       if (state === QueryExecutionState.SUCCEEDED) {
-        return await this.getQueryResults(QueryExecutionId, statementType);
+        const rows = await this.getQueryResults(
+          QueryExecutionId,
+          statementType,
+        );
+        return {
+          // Values are mapped at runtime; T is the caller's description of the row shape
+          rows: rows as unknown as T[],
+          stats: {
+            queryExecutionId: QueryExecutionId,
+            dataScannedInBytes: Statistics?.DataScannedInBytes,
+            engineExecutionTimeInMillis:
+              Statistics?.EngineExecutionTimeInMillis,
+            totalExecutionTimeInMillis: Statistics?.TotalExecutionTimeInMillis,
+            reusedPreviousResult:
+              Statistics?.ResultReuseInformation?.ReusedPreviousResult,
+          },
+        };
       } else if (state === QueryExecutionState.FAILED) {
-        throw new Error(`Query failed: ${Status.StateChangeReason}`);
+        throw new Error(`Query failed: ${Status?.StateChangeReason}`);
       } else if (state === QueryExecutionState.CANCELLED) {
         throw new Error('Query was cancelled');
       } else if (
@@ -144,8 +227,8 @@ export class AthenaQueryClient {
     statementType?: string,
   ) {
     const rows: Row[] = [];
-    let metadata: ResultSetMetadata;
-    let nextToken: string;
+    let metadata: ResultSetMetadata | undefined;
+    let nextToken: string | undefined;
 
     do {
       const response = await this.client.send(
@@ -168,15 +251,46 @@ export class AthenaQueryClient {
    * @param {Array} rows Data rows returned from Athena (without header row)
    * @return {Array} Array of Objects
    */
-  private mapData(metadata: ResultSetMetadata, rows: Row[]) {
-    const columns = (metadata?.ColumnInfo ?? []).map((column) => column.Name);
+  private mapData(metadata: ResultSetMetadata | undefined, rows: Row[]) {
+    const columnInfo = metadata?.ColumnInfo ?? [];
+    const columns = columnInfo.map((column, i) => column.Name ?? `_col${i}`);
 
     return rows.map((row) => {
-      const mappedObject = {};
+      const mappedObject: Record<string, string | number | boolean | null> = {};
       (row.Data ?? []).forEach((value, i) => {
-        mappedObject[columns[i]] = value.VarCharValue || '';
+        // Athena omits VarCharValue for NULL values
+        if (value.VarCharValue === undefined) {
+          mappedObject[columns[i]] = this.nullAsNull ? null : '';
+        } else if (this.coerceTypes) {
+          mappedObject[columns[i]] = this.coerce(
+            value.VarCharValue,
+            columnInfo[i]?.Type,
+          );
+        } else {
+          mappedObject[columns[i]] = value.VarCharValue;
+        }
       });
       return mappedObject;
     });
+  }
+
+  /**
+   * Convert a value to a JS type based on its Athena column type.
+   * Numeric types become numbers and boolean becomes true/false;
+   * everything else (including decimal, to keep precision) stays a string.
+   * @param {String} value Value returned from Athena
+   * @param {String} type Athena column type
+   * @return {String|Number|Boolean} Converted value
+   */
+  private coerce(value: string, type?: string): string | number | boolean {
+    const columnType = type?.toLowerCase();
+
+    if (columnType && NUMERIC_TYPES.has(columnType)) {
+      return Number(value);
+    } else if (columnType === 'boolean') {
+      return value === 'true';
+    }
+
+    return value;
   }
 }

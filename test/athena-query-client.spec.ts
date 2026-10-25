@@ -73,6 +73,182 @@ describe('AthenaQueryClient', () => {
     });
   });
 
+  it('returns rows with execution statistics from queryWithStats', async () => {
+    athenaMock.on(GetQueryExecutionCommand).resolves({
+      QueryExecution: {
+        StatementType: StatementType.DML,
+        Status: { State: QueryExecutionState.SUCCEEDED },
+        Statistics: {
+          DataScannedInBytes: 1024,
+          EngineExecutionTimeInMillis: 120,
+          TotalExecutionTimeInMillis: 150,
+          ResultReuseInformation: { ReusedPreviousResult: false },
+        },
+      },
+    });
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: {
+        ResultSetMetadata: columns('id'),
+        Rows: [row('id'), row('1')],
+      },
+    });
+
+    await expect(createClient().queryWithStats('SELECT id')).resolves.toEqual({
+      rows: [{ id: '1' }],
+      stats: {
+        queryExecutionId: 'qid',
+        dataScannedInBytes: 1024,
+        engineExecutionTimeInMillis: 120,
+        totalExecutionTimeInMillis: 150,
+        reusedPreviousResult: false,
+      },
+    });
+  });
+
+  it('returns rows typed with the given generic', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: {
+        ResultSetMetadata: columns('id'),
+        Rows: [row('id'), row('1')],
+      },
+    });
+
+    const rows = await createClient().query<{ id: string }>('SELECT id');
+    const ids: string[] = rows.map((r) => r.id);
+    expect(ids).toEqual(['1']);
+  });
+
+  it('passes params as ExecutionParameters', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: { ResultSetMetadata: columns('id'), Rows: [row('id')] },
+    });
+
+    const client = createClient();
+    await client.query('SELECT * FROM t WHERE id = ? AND name = ?', [
+      '1',
+      "'Audi'",
+    ]);
+    await client.query('SELECT 1');
+
+    const [withParams, withoutParams] = athenaMock.commandCalls(
+      StartQueryExecutionCommand,
+    );
+    expect(withParams.args[0].input.ExecutionParameters).toEqual([
+      '1',
+      "'Audi'",
+    ]);
+    expect(withoutParams.args[0].input).not.toHaveProperty(
+      'ExecutionParameters',
+    );
+  });
+
+  it('defaults Catalog to AwsDataCatalog', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: { ResultSetMetadata: columns('id'), Rows: [row('id')] },
+    });
+
+    await createClient({ Catalog: undefined }).query('SELECT 1');
+
+    const [start] = athenaMock.commandCalls(StartQueryExecutionCommand);
+    expect(start.args[0].input.QueryExecutionContext).toEqual({
+      Database: 'db',
+      Catalog: 'AwsDataCatalog',
+    });
+  });
+
+  it('uses an injected AthenaClient instead of creating one', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: { ResultSetMetadata: columns('id'), Rows: [row('id')] },
+    });
+    const client = new AthenaClient({ region: 'us-east-1' });
+
+    await new AthenaQueryClient({ Client: client, Database: 'db' }).query(
+      'SELECT 1',
+    );
+
+    expect(athenaMock.call(0).thisValue).toBe(client);
+  });
+
+  it('returns null for NULL values when NullAsNull is enabled', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: {
+        ResultSetMetadata: columns('id', 'name'),
+        Rows: [row('id', 'name'), row('1', undefined), row('2', '')],
+      },
+    });
+
+    await expect(
+      createClient({ NullAsNull: true }).query('SELECT 1'),
+    ).resolves.toEqual([
+      { id: '1', name: null },
+      { id: '2', name: '' },
+    ]);
+  });
+
+  it('converts values by column type when CoerceTypes is enabled', async () => {
+    athenaMock
+      .on(GetQueryExecutionCommand)
+      .resolves(executionState(QueryExecutionState.SUCCEEDED));
+    athenaMock.on(GetQueryResultsCommand).resolves({
+      ResultSet: {
+        ResultSetMetadata: {
+          ColumnInfo: [
+            { Name: 'id', Type: 'integer' },
+            { Name: 'big', Type: 'bigint' },
+            { Name: 'price', Type: 'double' },
+            { Name: 'exact', Type: 'decimal' },
+            { Name: 'active', Type: 'boolean' },
+            { Name: 'name', Type: 'varchar' },
+            { Name: 'note', Type: 'varchar' },
+          ],
+        },
+        Rows: [
+          row('id', 'big', 'price', 'exact', 'active', 'name', 'note'),
+          row('1', '9000000000', '9.5', '10.25', 'true', 'Audi', undefined),
+          row('2', '0', '0', '0.10', 'false', '42', undefined),
+        ],
+      },
+    });
+
+    await expect(
+      createClient({ CoerceTypes: true, NullAsNull: true }).query('SELECT 1'),
+    ).resolves.toEqual([
+      {
+        id: 1,
+        big: 9000000000,
+        price: 9.5,
+        exact: '10.25',
+        active: true,
+        name: 'Audi',
+        note: null,
+      },
+      {
+        id: 2,
+        big: 0,
+        price: 0,
+        exact: '0.10',
+        active: false,
+        name: '42',
+        note: null,
+      },
+    ]);
+  });
+
   it('fetches all result pages', async () => {
     athenaMock
       .on(GetQueryExecutionCommand)

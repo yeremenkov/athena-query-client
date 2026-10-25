@@ -2,31 +2,53 @@
   "name": "athena-query-client",
   "version": "1.1.0",
   "description": "The Athena Query Client is a simple package that provides a method to retrieve data from Amazon Athena by merely passing an SQL query as the single parameter of the method.",
-  "main": "./dist/athena-query-client.js",
-  "types": "./dist/athena-query-client.d.ts",
+  "main": "./dist/cjs/athena-query-client.js",
+  "module": "./dist/esm/athena-query-client.js",
+  "types": "./dist/cjs/athena-query-client.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/athena-query-client.d.ts",
+        "default": "./dist/esm/athena-query-client.js"
+      },
+      "require": {
+        "types": "./dist/cjs/athena-query-client.d.ts",
+        "default": "./dist/cjs/athena-query-client.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.js.map",
+    "dist/*/package.json",
+    "CHANGELOG.md"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yeremenkov/athena-query-client.git"
   },
   "author": "Vitaliy Yeremenko",
-  "license": "GPL-3.0-only",
+  "license": "MIT",
   "engines": {
     "node": ">=18"
   },
-  "private": null,
   "scripts": {
-    "build": "npx tsc -p tsconfig.build.json",
+    "build": "npm run clean && tsc -p tsconfig.build.json && tsc -p tsconfig.esm.json && node scripts/postbuild.js",
     "format": "prettier --write \"src/**/*.ts\"",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest",
     "lint:check": "eslint \"{src,test}/**/*.ts\"",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "version": "node scripts/changelog-release.js && git add CHANGELOG.md"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@aws-sdk/client-athena": "^3.429.0"
   },
   "devDependencies": {
-    "@types/express": "^4.17.17",
+    "@aws-sdk/client-athena": "^3.1152.0",
     "@types/jest": "^29",
     "@types/node": "^20.3.1",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
@@ -37,11 +59,7 @@
     "eslint-plugin-prettier": "^5.0.0",
     "jest": "^29",
     "prettier": "^3.0.0",
-    "source-map-support": "^0.5.21",
     "ts-jest": "^29",
-    "ts-loader": "^9.4.3",
-    "ts-node": "^10.9.1",
-    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.1.3"
   }
 }

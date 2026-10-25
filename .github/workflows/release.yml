@@ -23,6 +23,8 @@ jobs:
             echo "Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
             exit 1
           fi
+      - name: Check CHANGELOG.md has an entry for this version
+        run: node scripts/changelog-section.js "${GITHUB_REF_NAME#v}" > /dev/null
       - run: npm ci
       - run: npm run lint:check
       - run: npm test
@@ -47,6 +49,8 @@ jobs:
       - run: npm run build
       - run: npm publish --access public
       - name: Create GitHub Release
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
+        run: |
+          node scripts/changelog-section.js "${GITHUB_REF_NAME#v}" > release-notes.md
+          gh release create "$GITHUB_REF_NAME" --notes-file release-notes.md --verify-tag
         env:
           GH_TOKEN: ${{ github.token }}
