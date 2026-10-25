@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-25
+
 ### Breaking
 
 - `@aws-sdk/client-athena` is now a peer dependency. npm 7+ installs it automatically; with other package managers install it alongside: `npm install athena-query-client @aws-sdk/client-athena`.
