@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CoerceTypes` option to convert numeric and boolean columns to JS numbers and booleans.
 - ES module build alongside CommonJS.
 - Exported `AthenaQueryClientConfig`, `ResultReuseConfiguration`, `QueryStatistics` and `QueryResultWithStats` types.
+- `CHANGELOG.md` and `CONTRIBUTING.md`; GitHub Release notes now come from the changelog.
 
 ### Changed
 
