@@ -372,4 +372,13 @@ describe('AthenaQueryClient', () => {
       athenaMock.commandCalls(StopQueryExecutionCommand)[0].args[0].input,
     ).toEqual({ QueryExecutionId: 'qid' });
   });
+
+  it('throws when PollIntervalMs is not a positive number', () => {
+    expect(() => createClient({ PollIntervalMs: 0 })).toThrow(
+      'PollIntervalMs must be a positive number',
+    );
+    expect(() => createClient({ PollIntervalMs: -1 })).toThrow(
+      'PollIntervalMs must be a positive number',
+    );
+  });
 });

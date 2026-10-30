@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The client throws when `PollIntervalMs` is zero or negative, which previously caused a tight polling loop against the API.
+
 ## [2.0.0] - 2026-10-25
 
 ### Breaking
