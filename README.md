@@ -24,7 +24,7 @@ npm install athena-query-client @aws-sdk/client-athena
   - **ResultReuseByAgeConfiguration:** Specifies whether previous query results are reused, and if so, their maximum age.
     - **Enabled:** A boolean value that toggles this feature on or off. True if previous query results can be reused when the query is run; otherwise, false. The default is true.
     - **MaxAgeInMinutes:** Specifies, in minutes, the maximum age of a previous query result that Athena should consider for reuse. The default is 60.
-- **PollIntervalMs:** How often, in milliseconds, the query execution state is checked. Optional, defaults to 1000.
+- **PollIntervalMs:** How often, in milliseconds, the query execution state is checked. Optional, defaults to 1000. Must be a positive number.
 - **NullAsNull:** When true, NULL values are returned as `null` instead of empty strings. Optional, defaults to false.
 - **CoerceTypes:** When true, values are converted using the column type: `tinyint`, `smallint`, `integer`, `bigint`, `float`, `real` and `double` become numbers, `boolean` becomes `true`/`false`. Other types, including `decimal`, stay strings. Note that `bigint` values above 2^53 lose precision. Optional, defaults to false.
 - **MaxWaitMs:** Maximum time, in milliseconds, to wait for the query to finish. When exceeded, the query is stopped and an error is thrown. Optional, no limit by default.

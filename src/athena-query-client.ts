@@ -90,6 +90,9 @@ export class AthenaQueryClient {
     }
 
     if (config.PollIntervalMs !== undefined) {
+      if (config.PollIntervalMs <= 0) {
+        throw new Error('PollIntervalMs must be a positive number');
+      }
       this.pollIntervalMs = config.PollIntervalMs;
     }
 
