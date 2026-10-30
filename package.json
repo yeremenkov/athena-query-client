@@ -32,7 +32,7 @@
   "author": "Vitaliy Yeremenko",
   "license": "MIT",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "build": "npm run clean && tsc -p tsconfig.build.json && tsc -p tsconfig.esm.json && node scripts/postbuild.js",
