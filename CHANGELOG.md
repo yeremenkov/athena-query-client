@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Node.js 20 or later is required (previously 18). Node.js 18 reached end of life in April 2025, and CI already tested only 20, 22 and 24.
+
 ## [2.0.0] - 2026-10-25
 
 ### Breaking
